@@ -1,0 +1,129 @@
+# ============================================================
+#  GEAROPT — Main Configuration File
+# ============================================================
+#  Defines all mechanical constants, solver settings,
+#  and data paths for gearbox optimization.
+# ============================================================
+
+# ------------------------------------------------------------
+# DATA INPUT
+# ------------------------------------------------------------
+paths:
+  tspec_path: "./gearopt/data/T_spec_default.csv"   # path to torque spectrum CSV file
+  cache_dir: "./cache"                      # directory for cached results
+
+# ------------------------------------------------------------
+# MECHANICAL AND MATERIAL CONSTANTS
+# ------------------------------------------------------------
+parameters:
+
+  # === General gearbox setup ===
+  W_gb0: 60000                 # Gearbox reference weight normalization [kg]
+  w: 1                         # efficiency weighting factor
+  N_st: 3                      # Number of gear stages
+  N_x: 10                      # Number of design variables per stage
+  i_gb: 49.6                   # Total gearbox ratio (input/output speed ratio)
+  n0: 7.56                     # Rated rotor speed [rpm]
+  T0: 1.894701e+07             # Rated torque [Nm]
+  T_max: 3.789403e+07          # Ultimate load torque [Nm] (≈ 2 × T0)
+
+  # === Geometry and basic design parameters ===
+  alpha_n_deg: 20              # Normal pressure angle [deg]
+  h_a: 1.0                     # Addendum coefficient
+  s_R_s: 1.2                   # Sun gear tip rounding factor
+  s_R_p: 1.2                   # Planet gear tip rounding factor
+  s_R_r: 3.5                   # Ring gear tip rounding factor
+  h_fPf: 1.25                  # Root fillet factor
+  rho_fPf: 0.38                # Root fillet radius ratio
+
+  # === Load and safety factors ===
+  K_A: 1.25                    # Application factor
+  K_gamma: 1.0                 # Load sharing factor between planets
+  K_V: 1.0                     # Dynamic factor (velocity-dependent)
+  K_Falpha: 1.0                # Face load distribution factor (bending)
+  K_Fbeta_sp: 1.18             # Face load distribution factor (sun–planet mesh)
+  K_Fbeta_rp: 1.04             # Face load distribution factor (ring–planet mesh)
+  K_Halpha: 1.0                # Contact load distribution factor
+  K_Hbeta_sp: 1.2              # Contact load distribution factor (sun–planet)
+  K_Hbeta_rp: 1.04             # Contact load distribution factor (ring–planet)
+
+  # === Strength and endurance factors ===
+  Y_B: 1.0                     # Rim thickness factor
+  Y_DT: 1.0                    # Tooth root shape factor (dynamic)
+  Y_ST: 2.0                    # Tooth root stress correction factor (static)
+  Y_M_s: 1.0                   # Sun gear size factor
+  Y_M_p: 0.7                   # Planet gear size factor
+  Y_M_r: 1.0                   # Ring gear size factor
+  Y_delta_rel_T: 1.004         # Relative elastic deflection factor
+  Y_R_rel_T: 0.957             # Surface roughness factor
+
+  # === Contact and surface coefficients ===
+  Z_L: 1.02                    # Lubrication factor
+  Z_V: 0.961                   # Velocity factor
+  Z_W: 1.0                     # Load factor
+  Z_X: 1.0                     # Geometry factor for Hertzian contact
+
+  # === Safety limits (minimum allowable) ===
+  SF_min: 1.56                 # Minimum bending safety factor
+  SH_min: 1.25                 # Minimum contact safety factor              
+  S_ShFLS_min: 1.3             # Minimum shaft safety (FLS)
+  S_ShULS_min: 1.1             # Minimum shaft safety (ULS)
+  L10h_min: 219150             # Minimum bearing lifetime [hours]
+
+  # === Material properties ===
+  E_steel: 206000              # Young’s modulus for steel [MPa]
+  nu_steel: 0.3                # Poisson’s ratio for steel [-]
+  rho_steel: 7.85e-6           # Density [kg/mm³]
+  Rz: 4.8                      # Surface roughness [µm]
+  sigma_Y: 1000                # Yield strength [MPa]
+  sigma_U: 1300                # Ultimate tensile strength [MPa]
+  sigma_FE: 850                # Tooth bending endurance limit [MPa]
+  sigma_Hlim: 1500             # Tooth contact endurance limit [MPa]
+
+  # === Load distribution exponents (for equivalent torque) ===
+  p_SF: 8.738                  # Stress-life exponent for bending
+  p_SH: 6.611                  # Stress-life exponent for contact
+  p_Sh: 12.5                   # Stress-life exponent for shaft
+
+
+# ------------------------------------------------------------
+# OPTIMIZATION SETTINGS
+# ------------------------------------------------------------
+options:
+  continuous:
+    disp: false
+    ftol: 1e-4
+    maxiter: 10
+    lbC: [12, -0.6, -0.6, 1.2]
+    ubC: [20, 1, 1, 2.0]
+    
+  discrete:
+    maxiter: 5
+    popsize: 15
+    mutation: 0.7
+    recombination: 0.8
+    polish: true
+    disp: true
+    lbI: [3, 30, 30, 30, 3]
+    ubI: [8, 70, 100, 200, 5]
+    
+  ratios:
+    popsize: 1
+    maxiter: 1
+    recombination: 0.8
+    mutation: 0.05
+    polish: true
+    tol: 1e-4
+    disp: true
+
+system:
+  use_variable_ratios: false
+  parallel: true
+  verbose: true
+
+# ------------------------------------------------------------
+# LOGGING AND OUTPUT
+# ------------------------------------------------------------
+output:
+  save_results: true
+  results_dir: "./results"
