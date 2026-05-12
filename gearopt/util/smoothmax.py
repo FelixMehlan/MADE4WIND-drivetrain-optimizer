@@ -1,21 +1,20 @@
-import numpy as np
+import jax.numpy as jnp
 
 def smoothmax(a, b, k):
     """
-    Smooth approximation of max(a, b) using a differentiable function.
+    JAX-differentiable smooth approximation of max(a, b).
 
     Parameters
     ----------
-    a, b : float or array_like
-        Input values.
+    a, b : scalar or array-like
+        Input values (JAX tracers allowed).
     k : float
-        Smoothness parameter (larger k → sharper transition).
+        Smoothness parameter. Larger k → sharper approximation of max(a,b).
 
     Returns
     -------
-    y : ndarray
+    y : jnp.ndarray
         Smooth maximum of a and b.
     """
-    a = np.asarray(a)
-    b = np.asarray(b)
-    return 0.5 * (a + b) + 0.5 * np.sqrt((a - b) ** 2 + (1.0 / k) ** 2)
+
+    return 0.5 * (a + b) + 0.5 * jnp.sqrt((a - b)**2 + (1.0 / k)**2)

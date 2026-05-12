@@ -1,21 +1,19 @@
-import numpy as np
+import jax.numpy as jnp
 
 def smoothmin2(a, b, k):
     """
-    Smooth approximation of min(a, b) using a differentiable function.
+    JAX-differentiable smooth approximation of min(a, b).
 
     Parameters
     ----------
-    a, b : float or array_like
+    a, b : float or array-like (JAX tracers allowed)
         Input values.
     k : float
-        Smoothness parameter (larger k → sharper transition).
+        Smoothness parameter. Larger k → sharper transition.
 
     Returns
     -------
-    y : ndarray
+    y : jnp.ndarray
         Smooth minimum of a and b.
     """
-    a = np.asarray(a)
-    b = np.asarray(b)
-    return 0.5 * (a + b) - 0.5 * np.sqrt((a - b) ** 2 + (1.0 / k) ** 2)
+    return 0.5 * (a + b) - 0.5 * jnp.sqrt((a - b)**2 + (1.0 / k)**2)

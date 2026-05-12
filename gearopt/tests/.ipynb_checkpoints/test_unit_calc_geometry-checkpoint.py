@@ -11,8 +11,8 @@ def test_calc_geometry_runs():
     par = load_config("parameters")
     opts = load_config("options")
     x = np.array([
-        8, 41, 34, 112, 3, 18.75, 0.3698, 0.9220,
-        np.sin(np.deg2rad(15)) * 750 / (40 * np.pi)
+        41, 34, 112, 3, 8, 18.75,
+        0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
     geo = calc_geometry(x,par)
@@ -30,8 +30,8 @@ def test_calc_geometry_reference_comparison():
     par = load_config("parameters")
     opts = load_config("options")
     x = np.array([
-        8.0, 41.0, 34.0, 112.0, 3.0, 18.75, 0.3698, 0.9220,
-        np.sin(np.deg2rad(15)) * 750 / (40 * np.pi)
+        41, 34, 112, 3, 8, 18.75,
+        0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
     geo = calc_geometry(x,par)
@@ -70,6 +70,12 @@ def test_calc_geometry_reference_comparison():
         "eps_1_sp": 0.453,
         "eps_2_sp": 0.880,
         "eps_1_rp": 1.394,
+        "xE_i_s": 0.3544,
+        "xE_i_p": 0.9103,
+        "xE_i_r": -0.5858,
+        "Asn_i_s_mm": -0.450,
+        "Asn_i_p_mm": -0.340,
+        "Asn_i_r_mm": -0.780,
     }
 
     # --- Extract only available keys ---

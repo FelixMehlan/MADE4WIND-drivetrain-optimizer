@@ -14,7 +14,7 @@ def setup_data():
     opts = load_config("options")
     # === Geometry setup ===
     x = np.array([
-        8, 41, 34, 112, 3, 18.75,
+        41, 34, 112, 3, 8, 18.75,
         0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 

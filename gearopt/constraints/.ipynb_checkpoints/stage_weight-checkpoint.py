@@ -1,70 +1,59 @@
-import numpy as np
+import jax.numpy as jnp
+from jax import jit
 
 from gearopt.util.abs_smooth import abs_smooth
 from gearopt.util.softclip import softclip
+from gearopt.util.interp_linear import interp_linear
+
 from gearopt.geometry.calc_geometry import calc_geometry
 from gearopt.loads.calc_loads_ldd import calc_loads_ldd
 from gearopt.safety.calc_shaft import calc_shaft
 from gearopt.efficiency.calc_efficiency import calc_efficiency
 from gearopt.util.fit_bearing_catalog import fit_bearing_catalog
-from gearopt.config.load_config import load_config
 
+
+@jit
 def stage_weight(x, i_st, i_sts, par, data):
     """
-    Stage weight calculation (Python version of stageWeight.m)
-
-    Calculates the mass of a single gearbox stage and its main components
-    (gears, shafts, bearings, carrier) using smooth continuous formulations.
-
-    Parameters
-    ----------
-    x : array-like (10,)
-        [dm_n, z_s, z_p, z_r, Np_raw, db, x_s, x_p, eps_beta, i_st]
-    par : array-like
-        Parameter vector from parameters_default().
-    i_sts : float
-        Stage ratio.
-
-    Returns
-    -------
-    W_st : float
-        Total stage weight [kg].
-    reportW_k : dict
-        Detailed weight and geometry report.
+    JAX version of stage_weight()
     """
 
     # === Parameters ===
     rho_steel = par["rho_steel"]
-    w = par["w"]
+    w_eff = par["w"]
+    W_gb0 = par["W_gb0"]
     
-    # === Design variables ===
-    dm_n, z_s, z_p, z_r, Np_raw, db, x_s, x_p, eps_beta = x
+    # === Unpack design variables ===
+    z_s, z_p, z_r, Np_raw, dm_n, db, x_s, x_p, eps_beta = x
 
-    # === Smoothed basics ===
-    N_p = np.clip(Np_raw, 3.0, 5.0)
+    # === Smooth planet count ===
+    N_p = jnp.clip(Np_raw, 3.0, 5.0)
 
-    m_n_table = np.array([8, 10, 12, 16, 20, 25, 32, 40, 50], dtype=float)
-    m_n = np.interp(dm_n, np.arange(1, len(m_n_table) + 1), m_n_table)
+    # === Smooth module interpolation ===
+    m_n_table = jnp.array([8., 10., 12., 16., 20., 25., 32., 40., 50.])
+    idxs = jnp.arange(1, len(m_n_table) + 1)
+    m_n = interp_linear(dm_n, idxs, m_n_table)
 
+    # === Facewidth ===
     b = db * m_n
-    arg_raw = eps_beta * np.pi * m_n / np.maximum(b, 1e-12)
-    arg_safe = softclip(arg_raw, -0.999, 0.999, 10.0)
-    beta = np.arcsin(arg_safe)
-    beta_deg = np.degrees(beta)
 
-    # === Geometry / Loads ===
+    # === Helix angle (smoothed via softclip) ===
+    arg_raw = eps_beta * jnp.pi * m_n / jnp.maximum(b, 1e-12)
+    arg_safe = softclip(arg_raw, -0.999, 0.999, 10.0)
+    beta = jnp.arcsin(arg_safe)
+
+    # === Geometry + Loads (JAX versions) ===
     geo = calc_geometry(x, par)
     loads = calc_loads_ldd(x, geo, i_sts, par, data)
 
-    # === Bearing fits ===
+    # === Bearing fits (JAX versions) ===
     fits = fit_bearing_catalog()
     fit_d = fits["fit_d"]
     fit_W = fits["fit_W"]
 
-
-    # === Bearing sizing ===
-    b_b = 0.5 * b  # bearing width
-    d_i_p = geo["d_i_p"] # planet gear inner diameter (MATLAB index 22)
+    # Bearing width
+    b_b = 0.5 * b
+    d_i_p = geo["d_i_p"]
     d_o_b = fit_d(d_i_p, b_b)
 
     # === Shaft sizing ===
@@ -72,16 +61,16 @@ def stage_weight(x, i_st, i_sts, par, data):
     d_ss = reportSh["d_ss"]
     d_ps = reportSh["d_ps"]
 
-    # === Geometry values for weight (dictionary access) ===
-    d_pw_s = geo["d_pw_s"]    # sun pitch diameter
-    d_pw_p = geo["d_pw_p"]    # planet pitch diameter
-    d_pw_r = geo["d_pw_r"]    # ring pitch diameter
-    d_o_r  = geo["d_o_r"]     # ring outer diameter
-    a      = geo["a"]         # center distance
+    # === Geometry subset ===
+    d_pw_s = geo["d_pw_s"]
+    d_pw_p = geo["d_pw_p"]
+    d_pw_r = geo["d_pw_r"]
+    d_o_r  = geo["d_o_r"]
+    a      = geo["a"]
 
     # === Constants ===
-    pi_4_rho = np.pi * 0.25 * rho_steel
-    k_PLC = 4.45  # empirical carrier weight coefficient
+    pi_4_rho = jnp.pi * 0.25 * rho_steel
+    k_PLC = 4.45
 
     # === Component weights ===
     W_sg = pi_4_rho * abs_smooth(d_pw_s**2 - d_ss**2) * b
@@ -90,23 +79,26 @@ def stage_weight(x, i_st, i_sts, par, data):
     W_ss = pi_4_rho * d_ss**2 * (2 * b)
     W_ps = pi_4_rho * d_ps**2 * b
 
-    # Bearing weight
-    W_pb = fit_W(d_o_b, b_b) if callable(fit_W) else 0.1 * (d_o_b * b_b)
+    # === Bearing weight ===
+    W_pb = fit_W(d_o_b, b_b)
 
-    # Carrier weight
-    W_plc = rho_steel * np.pi * 0.25 * a**2 * b * k_PLC
+    # === Carrier weight ===
+    W_plc = rho_steel * jnp.pi * 0.25 * a**2 * b * k_PLC
 
-    # === Total stage weight ===
+    # === Total weight ===
     W_st = (
         W_sg + W_ss
-        + N_p * (W_pg + 2 * W_pb + W_ps)
+        + N_p * (W_pg + 2.0 * W_pb + W_ps)
         + W_rg + W_plc
     )
 
     # === Efficiency ===
     eta = calc_efficiency(x, i_sts, geo, loads, par)
 
-    # === Report structure ===
+    # === Objective ===
+    J = w_eff*W_st/W_gb0 + (1-w_eff)*(1-eta)*100
+    
+    # === Report dictionary (JAX-friendly) ===
     reportW_k = {
         "gear": {
             "W_st": W_st,
@@ -118,11 +110,8 @@ def stage_weight(x, i_st, i_sts, par, data):
             "W_pb": W_pb,
             "W_plc": W_plc,
             "N_p": N_p,
-            "total_planet_gears": N_p * W_pg,
-            "total_planet_bearings": N_p * 2 * W_pb,
-            "total_planet_shafts": N_p * W_ps,
             "eta": eta,
-            "w": w,  # efficiency weighting factor
+            "w": w_eff,
         },
         "dimensions": {
             "m_n": m_n,
@@ -137,4 +126,4 @@ def stage_weight(x, i_st, i_sts, par, data):
         },
     }
 
-    return float(W_st), reportW_k
+    return J, reportW_k

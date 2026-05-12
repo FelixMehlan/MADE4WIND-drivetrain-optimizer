@@ -1,4 +1,4 @@
-import numpy as np
+import jax.numpy as jnp
 
 def unscale_variables(x_scaled, lb, ub):
     """
@@ -6,20 +6,23 @@ def unscale_variables(x_scaled, lb, ub):
 
     Parameters
     ----------
-    x_scaled : array_like
+    x_scaled : array-like (JAX tracers allowed)
         Scaled variable(s) in [0, 1].
-    lb : array_like
+    lb : array-like
         Lower bounds.
-    ub : array_like
+    ub : array-like
         Upper bounds.
 
     Returns
     -------
-    x : ndarray
-        Unscaled variable(s) in the original range.
+    x : jnp.ndarray
+        Unscaled variable(s) in the original physical range.
     """
-    x_scaled = np.asarray(x_scaled).reshape(-1)
-    lb = np.asarray(lb).reshape(-1)
-    ub = np.asarray(ub).reshape(-1)
+
+    x_scaled = jnp.asarray(x_scaled).reshape(-1)
+    lb       = jnp.asarray(lb).reshape(-1)
+    ub       = jnp.asarray(ub).reshape(-1)
+
     scale = ub - lb
+
     return x_scaled * scale + lb

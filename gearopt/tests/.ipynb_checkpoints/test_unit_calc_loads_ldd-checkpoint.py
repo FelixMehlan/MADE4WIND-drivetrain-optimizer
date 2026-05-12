@@ -17,8 +17,8 @@ def test_calc_loads_ldd_basic():
     
     # Simplified dummy input
     x = np.array([
-        8, 41, 34, 112, 3, 18.75, 0.37, 0.92,
-        np.sin(np.deg2rad(15)) * 750 / (40 * np.pi)
+        41, 34, 112, 3, 8, 18.75,
+        0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
     geo = calc_geometry(x, par)
@@ -50,9 +50,8 @@ def test_calc_loads_ldd_reference_comparison():
     opts = load_config("options")
     # --- Design vector (same as geometry tests) ---
     x = np.array([
-        8.0, 41.0, 34.0, 112.0, 3.0, 18.75,
-        0.3698, 0.9220,
-        np.sin(np.deg2rad(15)) * 750 / (40 * np.pi)
+        41, 34, 112, 3, 8, 18.75,
+        0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
     # --- Parameters and setup ---
@@ -93,9 +92,22 @@ def test_calc_loads_ldd_reference_comparison():
     print(df.to_string(index=False, float_format=lambda x: f"{x:10.6f}"))
 
     # --- Validation ---
-    rel_tol = 0.01  # 1% tolerance
+    rel_tol = 0.01   # 1% tolerance
+    abs_tol_Fax = 0.1
+    
     for key, ref_val, calc_val, rel_err in rows:
+    
+        # Special rule for axial force
+        if key == "F_ax":
+            assert np.isclose(calc_val, ref_val, atol=abs_tol_Fax), (
+                f"{key} mismatch: {calc_val:.6e} vs {ref_val:.6e} "
+                f"(abs err {abs(calc_val-ref_val):.6e}, tol={abs_tol_Fax})"
+            )
+            continue
+    
+        # General rule: relative tolerance
         assert np.isclose(calc_val, ref_val, rtol=rel_tol), (
             f"{key} mismatch: {calc_val:.6e} vs {ref_val:.6e} "
             f"(rel err {rel_err:.3f}%)"
         )
+

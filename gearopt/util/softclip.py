@@ -1,36 +1,37 @@
-import numpy as np
+import jax.numpy as jnp
 
 def softclip(x, a, b, c):
     """
-    Smooth clipping using a softplus/softminus formulation.
-    Provides a differentiable alternative to np.clip(x, a, b).
+    JAX-differentiable smooth clipping (soft alternative to jnp.clip).
 
     Parameters
     ----------
-    x : float or array_like
-        Input value(s).
+    x : array-like or scalar (JAX tracers allowed)
+        Input values.
     a, b : float
-        Lower and upper clipping limits.
+        Lower and upper soft clipping limits.
     c : float
-        Sharpness parameter. Larger values -> sharper transition.
+        Sharpness parameter. Larger -> sharper transitions.
 
     Returns
     -------
-    y : ndarray
-        Softly clipped version of x.
+    y : jnp.ndarray
+        Smoothly clipped x.
     """
-    x = np.asarray(x, dtype=float)
-    a = float(a)
-    b = float(b)
-    c = float(c) / ((b - a) / 2)
 
+    # Normalize sharpness relative to interval width (matches original)
+    c = c / ((b - a) / 2)
+
+    # JAX-stable softplus implementation
     def softplus(z):
-        return np.log1p(np.exp(-np.abs(z))) + np.maximum(z, 0.0)
+        return jnp.log1p(jnp.exp(-jnp.abs(z))) + jnp.maximum(z, 0)
 
     def softminus(z):
         return -softplus(-z)
 
-    v = x.copy()
+    # Use pure JAX expressions, no copies
+    v = x
     v = v - softminus(c * (x - a)) / c
     v = v - softplus(c * (x - b)) / c
+
     return v

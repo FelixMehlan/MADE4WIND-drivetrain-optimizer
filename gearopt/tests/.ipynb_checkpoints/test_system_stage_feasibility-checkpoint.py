@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from gearopt.optim.stage_feasibility import stage_feasibility
-from gearopt.config.parameters_default import parameters_default
 from gearopt.config.load_config import load_config
 from gearopt.data.load_tspec import load_tspec
 
@@ -24,13 +23,13 @@ def setup_data():
 def test_candidate_structure(setup_data):
     candidates = setup_data["candidates"]
     assert candidates.size > 0, "No feasible candidates found"
-    assert candidates.shape[1] == 5, "Unexpected number of columns"
+    assert candidates.shape[1] == 4, "Unexpected number of columns"
 
 def test_ratio_consistency(setup_data):
     candidates = setup_data["candidates"]
     i_st = setup_data["i_st"]
 
-    i_calc = 1 + candidates[:, 3] / candidates[:, 1]
+    i_calc = 1 + candidates[:, 2] / candidates[:, 0]
     rel_err = np.abs((i_calc - i_st) / i_st)
     assert np.all(rel_err <= 0.1), f"Some ratios exceed tolerance (max {rel_err.max():.3f})"
 
@@ -39,7 +38,7 @@ def test_adjacency_constraint(setup_data):
     h_a = 1.0
 
     for row in candidates:
-        z_s, z_p, N_p = row[1], row[2], row[4]
+        z_s, z_p, N_p = row[0], row[1], row[3]
         a = 0.5 * (z_s + z_p)
         d_ap = z_p + 2 * h_a
         cond_adj = (d_ap - 2 * a * np.sin(np.pi / N_p)) / d_ap

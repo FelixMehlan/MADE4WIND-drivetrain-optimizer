@@ -4,13 +4,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 from gearopt.optim.gearopt_stage import gearopt_stage
 from gearopt.config.load_config import load_config
+from gearopt.optim.stage_ratio_band_from_bounds import stage_ratio_band_from_bounds
 
 # === Global cache replacement for MATLAB persistent map ===
 _ratio_cache = {}
 _cache_stats = {"hit": 0, "miss": 0}
 
 
-def fitness_ratios(svec, S, smin, smax, par, data, opts, verbose=False):
+def fitness_ratios(svec, S, smin, smax, par, data, opts, 
+                   obj_val_and_grad, con_val_jit, con_jac_jit, obj_hess_jit, obj_rest_val_and_grad,
+                   par_static, data_static,
+                   verbose=False):
     """
     Evaluate gearbox weight for a given N-stage ratio configuration.
 
@@ -31,14 +35,12 @@ def fitness_ratios(svec, S, smin, smax, par, data, opts, verbose=False):
         Detailed result including per-stage data, feasibility, and ratios.
     """
 
-    if verbose:
-        print(f"Evaluating ratios: {np.round(np.exp(s_all), 3)}, penalty={penal:.2f}")
     
     global _ratio_cache, _cache_stats
 
     N_st = par["N_st"]
     svec = np.asarray(svec, dtype=float).ravel()
-
+    
     # --- Derive full ratios ---
     s_last = S - np.sum(svec)
     s_all = np.concatenate([svec, [s_last]])
@@ -47,6 +49,29 @@ def fitness_ratios(svec, S, smin, smax, par, data, opts, verbose=False):
     for k in range(1, N_st):
         i_sts[k] = i_sts[k - 1] * ratios[k - 1]
 
+    
+
+    lbI = opts["discrete"]["lbI"]
+    ubI = opts["discrete"]["ubI"]
+
+    # --- Integer-feasibility precheck for all stages ---
+    for k in range(N_st):
+        rmin, rmax = stage_ratio_band_from_bounds(lbI, ubI)
+        if not (rmin <= ratios[k] <= rmax):
+            # Entire gearbox is infeasible — no need to run any optimizers
+            out = {
+                "W": np.inf,
+                "stage": None,
+                "ratios": ratios,
+                "Cmax": np.inf,
+                "feasible": False,
+                "fail_reason": "stage_ratio_out_of_integer_bounds",
+                "fail_stage": k + 1,
+            }
+            f = np.inf
+            return f, out
+
+    
     # --- Cache key ---
     key = "_".join([f"{r:.4f}" for r in ratios])
 
@@ -67,35 +92,68 @@ def fitness_ratios(svec, S, smin, smax, par, data, opts, verbose=False):
     elif s_last > smax:
         penal = (s_last - smax) ** 2 * 1e4
 
+    if verbose:
+        print(f"Evaluating ratios: {np.round(np.exp(s_all), 3)}, penalty={penal:.2f}")
+        
     # --- Solve each stage independently ---
     stage_data = [None] * N_st
-    with ThreadPoolExecutor(max_workers=min(N_st, 4)) as executor:
-        futures = []
-        for k in range(N_st):
-            futures.append(
+    use_parallel = opts["ratios"]["parallel"]
+    
+    if use_parallel:
+        max_workers = opts.get("n_workers", min(N_st, 4))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
                 executor.submit(
                     gearopt_stage,
                     k + 1,
                     ratios[k],
                     i_sts[k],
-                    par, 
+                    par,
                     data,
-                    opts
+                    opts,
+                    obj_val_and_grad, con_val_jit, con_jac_jit,
+                    obj_hess_jit, obj_rest_val_and_grad,
+                    par_static, data_static,
                 )
+                for k in range(N_st)
+            ]
+            for k, f_res in enumerate(futures):
+                Wk, xk, Ck, feask = f_res.result()
+                stage_data[k] = dict(x=xk, W=Wk, C=Ck, feas=feask, ratio=ratios[k])
+    else:
+        # Serial evaluation (debug-safe)
+        for k in range(N_st):
+            Wk, xk, Ck, feask = gearopt_stage(
+                k + 1,
+                ratios[k],
+                i_sts[k],
+                par,
+                data,
+                opts,
+                obj_val_and_grad, con_val_jit, con_jac_jit,
+                obj_hess_jit, obj_rest_val_and_grad,
+                par_static, data_static,
             )
-        for k, f_res in enumerate(futures):
-            Wk, xk, Ck = f_res.result()
-            stage_data[k] = dict(x=xk, W=Wk, C=Ck, ratio=ratios[k])
+            stage_data[k] = dict(x=xk, W=Wk, C=Ck, feas=feask, ratio=ratios[k])
+
 
     # --- Aggregate results ---
     Wsum = sum(stage["W"] for stage in stage_data)
-    all_C = np.concatenate([np.atleast_1d(s["C"]) for s in stage_data if s["C"] is not None])
-    Cmax = np.max(all_C) if all_C.size > 0 else 0.0
-    feas = np.all(all_C <= 0.0)
+    
+    # Overall feasibility: all stages feasible
+    feas = all(bool(stage.get("feas", False)) for stage in stage_data)
+    
+    # Still compute a diagnostic Cmax (optional, but useful for penalty magnitude)
+    all_C = np.concatenate([
+        np.atleast_1d(s["C"]) for s in stage_data if s.get("C") is not None
+    ])
+    all_C = all_C[np.isfinite(all_C)]
+    Cmax = float(np.max(all_C)) if all_C.size else float("inf")
+
 
     # --- Penalize infeasibility ---
-    f = Wsum + penal + (not feas) * 1e6 * (1 + max(0.0, Cmax))
-
+    #f = Wsum + penal + (not feas) * 1e7 * (1 + max(0.0, Cmax))
+    f = Wsum + penal
     # --- Collect outputs ---
     out = {
         "W": Wsum,

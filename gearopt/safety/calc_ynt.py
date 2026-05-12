@@ -1,30 +1,22 @@
-import numpy as np
+import jax.numpy as jnp
 
-def calc_ynt(rpm: float) -> float:
+def calc_ynt(rpm):
     """
-    Smooth lifetime factor Y_NT as a function of rotational speed (rpm).
-    Mirrors the MATLAB calcYNT function exactly.
-
-    Parameters
-    ----------
-    rpm : float
-        Rotational speed in revolutions per minute.
-
-    Returns
-    -------
-    Y_NT : float
-        Lifetime factor.
+    JAX-differentiable lifetime factor Y_NT(rpm).
+    Exact mathematical match to the original NumPy version.
     """
-    # Total number of stress cycles over lifetime
-    n = rpm * 25 * 8766 * 60  # 25 years × hours/year × 60 min/h
 
-    # Exponent from empirical relationship
-    m = (np.log10(1.0) - np.log10(0.93)) / (np.log10(3e6) - np.log10(110e6))
+    # Stress cycles over 25-year design life
+    n = rpm * 25.0 * 8766.0 * 60.0
 
-    # Constant C so that Y_NT(3e6) = 1
-    C = 1.0 * (3e6) ** (-m)
+    # Slope m from empirical log-log relationship
+    m = (
+        (jnp.log10(1.0) - jnp.log10(0.93))
+        / (jnp.log10(3e6) - jnp.log10(110e6))
+    )
+
+    # Constant C to satisfy Y_NT(3e6 cycles) = 1
+    C = (3e6) ** (-m)
 
     # Lifetime factor
-    Y_NT = C * n ** m
-
-    return float(Y_NT)
+    return C * n**m

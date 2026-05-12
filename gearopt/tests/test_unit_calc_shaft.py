@@ -17,9 +17,8 @@ def setup_data():
     opts = load_config("options")
     # --- Design vector (same as other tests) ---
     x = np.array([
-        8.0, 41.0, 34.0, 112.0, 3.0, 18.75,
-        0.3698, 0.9220,
-        np.sin(np.deg2rad(15)) * 750 / (40 * np.pi)
+        41, 34, 112, 3, 8, 18.75,
+        0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
     # --- Parameters and setup ---

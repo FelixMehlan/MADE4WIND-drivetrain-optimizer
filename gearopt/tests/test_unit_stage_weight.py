@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 from gearopt.constraints.stage_weight import stage_weight
-from gearopt.config.parameters_default import parameters_default
 from gearopt.geometry.calc_geometry import calc_geometry
 from gearopt.loads.calc_loads_ldd import calc_loads_ldd
 from gearopt.util.fit_bearing_catalog import fit_bearing_catalog
@@ -17,7 +16,7 @@ def test_stage_weight_reference():
     opts = load_config("options")
     # --- Design vector ---
     x = np.array([
-        8, 41, 34, 112, 3, 18.75,
+        41, 34, 112, 3, 8, 18.75,
         0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 

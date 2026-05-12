@@ -39,6 +39,7 @@ parameters:
   # === Load and safety factors ===
   K_A: 1.25                    # Application factor
   K_gamma: 1.0                 # Load sharing factor between planets
+  calc_K_gamma: True          # If true, use K_gamma = [1.00, 1.20, 1.35] for N_p = [3, 4, 5]
   K_V: 1.0                     # Dynamic factor (velocity-dependent)
   K_Falpha: 1.0                # Face load distribution factor (bending)
   K_Fbeta_sp: 1.18             # Face load distribution factor (sun–planet mesh)
@@ -91,21 +92,26 @@ parameters:
 # ------------------------------------------------------------
 options:
   continuous:
-    disp: false
-    ftol: 1e-4
-    maxiter: 10
+    disp: False
+    ftol: 1e-6
+    maxiter: 50
     lbC: [12, -0.6, -0.6, 1.2]
-    ubC: [20, 1, 1, 2.0]
+    ubC: [20, 1.0, 1.0, 2.0]
+    n_start_feas: 64
+    n_start_full: 1
+    ctol: 1e-4
+    rest_maxiter: 50
+    rest_ftol: 1e-12
     
   discrete:
-    maxiter: 5
-    popsize: 15
-    mutation: 0.7
+    maxiter: 3
+    popsize: 50
+    mutation: 0.8
     recombination: 0.8
     polish: true
     disp: true
-    lbI: [3, 30, 30, 30, 3]
-    ubI: [8, 70, 100, 200, 5]
+    lbI: [30, 30, 30, 3, 3]
+    ubI: [70, 100, 200, 5, 9]
     
   ratios:
     popsize: 1
@@ -115,10 +121,11 @@ options:
     polish: true
     tol: 1e-4
     disp: true
+    parallel: true
 
 system:
   use_variable_ratios: false
-  parallel: true
+  parallel: false
   verbose: true
 
 # ------------------------------------------------------------

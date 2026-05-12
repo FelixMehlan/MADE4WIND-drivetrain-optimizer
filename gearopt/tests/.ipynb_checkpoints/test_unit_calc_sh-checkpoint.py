@@ -14,7 +14,7 @@ def setup_data():
     opts = load_config("options")
     # === Geometry setup ===
     x = np.array([
-        8, 41, 34, 112, 3, 18.75,
+        41, 34, 112, 3, 8, 18.75,
         0.3698, 0.9220, np.sin(np.deg2rad(15)) * 750 / 40 / np.pi
     ])
 
@@ -43,11 +43,11 @@ def setup_data():
         "K_Hbeta_sp": 1.20, "K_Hbeta_rp": 1.04, "K_Halpha": 1.00,
     }
 
-    return x, i_sts, geo, loads, ref
+    return x, i_sts, geo, loads, ref, par
 
 
 def test_calc_sh_detailed(setup_data):
-    x, i_sts, geo, loads, ref = setup_data
+    x, i_sts, geo, loads, ref, par = setup_data
 
     # === Compute with debug output ===
     result = calc_sh(x, i_sts, geo, loads, par, return_all=True)

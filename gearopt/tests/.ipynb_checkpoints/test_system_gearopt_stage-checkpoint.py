@@ -61,3 +61,5 @@ def test_gearopt_stage_runs(setup_data):
     # Allow either feasible design or correctly flagged infeasible
     assert (Cmax < 1e-3) or (not feasible), \
         f"Constraint violation too high (Cmax={Cmax:.3e})"
+
+    print(x_best)

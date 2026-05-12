@@ -1,22 +1,28 @@
-import numpy as np
+import jax.numpy as jnp
+
 def safe_div(a, b, eps_val=1e-12):
     """
-    Safe division: smooth, sign-preserving division avoiding zero denominators.
+    JAX-safe smooth division: a / b with sign-preserving smoothing
+    to avoid division by zero.
 
     Parameters
     ----------
-    a : array_like
+    a : array-like or scalar
         Numerator.
-    b : array_like
+    b : array-like or scalar
         Denominator.
     eps_val : float
-        Smoothing tolerance to avoid division by zero.
+        Smoothing constant to avoid non-differentiability.
 
     Returns
     -------
-    y : ndarray
+    y : jnp.ndarray
         Smooth approximation of a / b.
     """
-    a, b = np.asarray(a), np.asarray(b)
-    absb = np.sqrt(b**2 + eps_val**2)
-    return a / absb * np.sign(b)
+    # smooth absolute value of denominator
+    abs_b = jnp.sqrt(b * b + eps_val * eps_val)
+
+    # preserve the sign like original implementation
+    sign_b = jnp.sign(b)
+
+    return a / abs_b * sign_b

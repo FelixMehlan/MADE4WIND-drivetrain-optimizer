@@ -1,17 +1,12 @@
-import numpy as np
+import jax.numpy as jnp
 
 def calc_zbd():
     """
-    Calculate ISO 6336 contact stress geometry factors Z_B and Z_D.
-
-    Returns
-    -------
-    Z_B : float
-        Contact geometry factor for helix angle correction.
-    Z_D : float
-        Diameter-related geometry factor (identical to Z_B for standard gears).
+    JAX version of ISO 6336 Z_B and Z_D.
+    Identical to the NumPy version but JAX-safe.
     """
-    f_ZCa = 1.2  # helical gears without flank modification
-    Z_B = np.sqrt(f_ZCa)
+
+    f_ZCa = 1.2
+    Z_B = jnp.sqrt(f_ZCa)
     Z_D = Z_B
-    return float(Z_B), float(Z_D)
+    return Z_B, Z_D
